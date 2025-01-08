@@ -1,0 +1,47 @@
+<button id="my-button">Run myFunction</button>
+
+<label for="input">Code</label><textarea id="input" name="input" rows="4" cols="50"></textarea>
+
+<div id="output"></div>
+
+{{{ SCRIPT }}}
+<script>
+    document.getElementById("my-button").addEventListener("click", () => {
+        const ptr_from_wasm  = Module.ccall(
+            "compile", // name of C function
+            "number", // return type
+            ['string'], // argument types
+            [document.getElementById("input").value], // arguments
+        );
+
+        console.log(document.getElementById("input").value)
+
+
+
+        const size  = Module.ccall(
+            "getSize", // name of C function
+            "number", // return type
+            null, // argument types
+            null, // arguments
+        );
+
+        console.log(size);
+
+        let js_array = Module.HEAPU8.subarray(ptr_from_wasm, ptr_from_wasm + size);
+
+        console.log(js_array);
+
+        let output = "const static unsigned char prg[] = {";
+        //convert to hex with leading zero and uppercase and without last ,
+        for (let i = 0; i < js_array.length; i++) {
+            output += "0x" + js_array[i].toString(16).padStart(2, '0').toUpperCase() + ", ";
+        }
+
+        output = output.slice(0, -2);
+
+        output += "};";
+
+        document.getElementById("output").innerText = output;
+    });
+</script>
+

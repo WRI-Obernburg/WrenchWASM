@@ -1,0 +1,3 @@
+C:/Users/T.Arnold/OneDrive - Walter Reis Stiftung/Dokumente/Github/WrenchWASM/cmake-build-debug/CMakeFiles/WrenchWASM.dir
+C:/Users/T.Arnold/OneDrive - Walter Reis Stiftung/Dokumente/Github/WrenchWASM/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/T.Arnold/OneDrive - Walter Reis Stiftung/Dokumente/Github/WrenchWASM/cmake-build-debug/CMakeFiles/rebuild_cache.dir
