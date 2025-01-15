@@ -2,7 +2,7 @@
 #ifndef _WRENCH_H
 #define _WRENCH_H
 /*******************************************************************************
-Copyright (c) 2024 Curt Hartung -- curt.hartung@gmail.com
+Copyright (c) 2025 Curt Hartung -- curt.hartung@gmail.com
 
 MIT Licence
 
@@ -32,7 +32,7 @@ SOFTWARE.
 
 #define WRENCH_VERSION_MAJOR 6
 #define WRENCH_VERSION_MINOR 0
-#define WRENCH_VERSION_BUILD 11
+#define WRENCH_VERSION_BUILD 16
 
 struct WRState;
 
@@ -423,7 +423,7 @@ void wr_destroyContext( WRContext* context );
 // set here, can be adjusted at runtime with the
 // wr_setAllocatedMemoryGCHint()
 #define WRENCH_DEFAULT_ALLOCATED_MEMORY_GC_HINT 4000
-void wr_setAllocatedMemoryGCHint( WRContext* context, const uint16_t bytes );
+void wr_setAllocatedMemoryGCHint( WRState* w, const uint16_t bytes );
 
 /***************************************************************/
 /***************************************************************/
@@ -514,6 +514,7 @@ void wr_loadMessageLib( WRState* w ); // messaging between contexts
 void wr_loadSerializeLib( WRState* w ); // serialize WRValues to and from binary
 void wr_loadDebugLib( WRState* w ); // debuger-interact functions
 void wr_loadTCPLib( WRState* w ); // TCP/IP functions
+void wr_loadContainerLib( WRState* w ); // array/hash/queue/stack/list
 
 // arduino-specific functions, be sure to add arduino_lib.cpp to your
 // sketch. much thanks to Koepel for contributing
@@ -692,10 +693,9 @@ enum WRExType : uint8_t
 
 	WR_EX_RAW_ARRAY  = 0x20,  // 0010
 
-	// EX types have one of the upper two bits set
-	WR_EX_DEBUG_BREAK= 0x40,  // 0100
+	WR_EX_LL_POINTER = 0x40,  // 0100  [experimental]
 	
-	WR_EX_ITERATOR	      = 0x60,  // 0110
+	WR_EX_ITERATOR	       = 0x60,  // 0110
 	WR_EX_CONTAINER_MEMBER = 0x80,  // 1000
 	WR_EX_ARRAY            = 0xA0,  // 1010
 
@@ -716,15 +716,6 @@ enum WRGCObjectType
 	SV_CHAR = 0x05,  // !!
 };
 
-#define EX_TYPE_MASK   0xE0
-#define IS_DEBUG_BREAK(X) ((X)==WR_EX_DEBUG_BREAK)
-#define IS_CONTAINER_MEMBER(X) (((X)&EX_TYPE_MASK)==WR_EX_CONTAINER_MEMBER)
-#define IS_ARRAY(X) ((X)==WR_EX_ARRAY)
-#define IS_ITERATOR(X) ((X)==WR_EX_ITERATOR)
-#define IS_RAW_ARRAY(X) (((X)&EX_TYPE_MASK)==WR_EX_RAW_ARRAY)
-#define IS_HASH_TABLE(X) ((X)==WR_EX_HASH_TABLE)
-#define EXPECTS_HASH_INDEX(X) ( ((X)==WR_EX_STRUCT) || ((X)==WR_EX_HASH_TABLE) )
-
 #ifdef ARDUINO
 #include <Arduino.h>
 #endif
@@ -735,14 +726,6 @@ enum WRGCObjectType
   #define WRENCH_LITTLE_ENDIAN
 #else
   #error "Endian-ness not detected! Please contact curt.hartung@gmail.com so it can be added <01>"
-#endif
-
-#if (INTPTR_MAX == INT64_MAX)
-  #define WRENCH_64
-#elif (INTPTR_MAX == INT32_MAX)
-  #define WRENCH_32
-#else
-  #error "incompatible environment, remove this error to assume 32-bit"
 #endif
 
 #ifdef WRENCH_HANDLE_MALLOC_FAIL
@@ -840,12 +823,8 @@ struct WRValue
 
 	union // first 4 bytes 
 	{
-//		intptr_t i;
-//		uintptr_t ui;
 		int32_t i;
 		uint32_t ui;
-
-
 		float f;
 		WRValue* frame;
 		const void* p;
@@ -943,7 +922,7 @@ class WrenchValue
 public:
 		
 	WrenchValue( WRContext* context, const char* label ) : m_context(context), m_value( wr_getGlobalRef(context, label) ) {}
-	WrenchValue( WRContext* context, WRValue* value ) : m_context(context), m_value(value) {}
+	WrenchValue( WRContext* context, WRValue* value ) : m_context(context), m_value(&(value->deref())) {}
 
 	bool isValid() const { return m_value ? true : false; }
 
